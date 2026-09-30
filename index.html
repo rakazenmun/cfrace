@@ -38,7 +38,6 @@ nav{display:flex;gap:16px;margin:2px 0 6px}
 <section id="signin" class="card hide"><h2>Sign in to race</h2><button class="go" id="signinbtn">Sign in</button></section>
 
 <section id="sethandle" class="card hide"><h2>Link your Codeforces account</h2>
- <p class="tag">Sign in with Codeforces to prove the handle is yours. Your Elo starts at your Codeforces rating.</p>
  <button class="go" id="verify">Verify with Codeforces</button>
  <div class="row hide" id="devlink" style="justify-content:flex-start"><label>Handle (dev only)<input id="handle" placeholder="tourist"></label><button id="savehandle">Link</button></div></section>
 
@@ -57,7 +56,7 @@ nav{display:flex;gap:16px;margin:2px 0 6px}
   <label>Code<input id="jcode" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase;width:110px"></label>
   <button id="join">Join</button><button id="watch">Watch</button></div></div>
  <div class="card hide" id="acctcard"><h2>Your Codeforces account</h2><div id="acctinfo" class="tag"></div><p><button id="chg"></button></p>
-  <p class="tag">Changing your handle re-verifies through Codeforces, is limited to once every 7 days, and is blocked while you are in an active room. Earned Elo is rescaled by 10x per 600 rating points of difference.</p></div>
+  <p class="tag">You can change your handle every week.</p></div>
 </section>
 
 <section id="lbpage" class="hide"><div class="card"><h2>Leaderboard</h2><div class="wrap"><table id="lb"></table></div></div></section>
@@ -143,7 +142,7 @@ function renderAcct(m){
 }
 async function startVerify(){try{const {url}=await api('POST','/api/oidc/start',{});location.href=url}catch(e){say(e.message)}}
 $('verify').onclick=startVerify;
-$('chg').onclick=()=>{if(meInfo.verified&&!confirm('Change your Codeforces handle? You will re-verify with Codeforces, your earned Elo will be rescaled to the new account, and you cannot change again for 7 days.'))return;startVerify()};
+$('chg').onclick=()=>{if(meInfo.verified&&!confirm('Change your handle?'))return;startVerify()};
 function go(p,replace){history[replace?'replaceState':'pushState'](null,'',p);nav()}
 function detach(){if(es){es.close();es=null}S=null;show('room',false)}
 async function nav(){
@@ -223,7 +222,7 @@ function renderClock(){
   const t=now(),ph=phase();
   $('clock').textContent=ph==='lobby'?mmss(S.cfg.minutes*6e4):ph==='countdown'?'Go in '+Math.ceil((S.startAt-t)/1000):ph==='live'?mmss(S.endAt-t):'00:00';
   $('exit').textContent=spectating?'Stop watching':ph==='countdown'||ph==='live'?'Forfeit':ph==='done'?'Exit':'Leave room';
-  $('status').textContent=spectating?'Watching live':{lobby:'Waiting for players',countdown:'Get ready',live:'Race is on. You can leave this page and come back.',done:'Finished'}[ph];
+  $('status').textContent=spectating?'Watching live':{lobby:'Waiting for players',countdown:'Get ready',live:'Race is on',done:'Finished'}[ph];
 }
 function renderReady(){
   const lobby=phase()==='lobby'&&!S.problems;

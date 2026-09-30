@@ -248,8 +248,7 @@ async function startRoom(room) {
 async function pollLoop(room) {
   await sleep(Math.max(0, room.startAt - Date.now()));
   while (!room.finalized && rooms.get(room.code) === room) {
-    const last = Date.now() > room.endAt + GRACE_MS;  // keep polling through the paste window so late verdicts count
-    for (const h of [...room.players]) {
+    const last = Date.now() > room.endAt + GRACE_MS;    for (const h of [...room.players]) {
       try {
         const subs = await cf('user.status', { handle: h, from: 1, count: 100 });
         room.scores[h] = score(room, subs);
@@ -290,8 +289,6 @@ function changeBlock(u) {
   if (activeRoomsFor(u.handle).length) return 'Leave or finish your active races before changing your handle.';
   return null;
 }
-// Earned Elo (elo - old base rating) is rescaled by 10^(-(newBase - oldBase) / 600):
-// 200 earned on a 400 base becomes 20 earned on a 1000 base (and the reverse going down).
 function carryElo(u, newBase) {
   const oldBase = u.cfRating || UNRATED_START, earned = u.elo - oldBase;
   return Math.max(0, Math.round(newBase + earned * Math.pow(CARRY_BASE, -(newBase - oldBase) / CARRY_PER)));
