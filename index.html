@@ -29,16 +29,18 @@ textarea{width:100%;min-height:130px;font:13px/1.4 ui-monospace,monospace;margin
 pre{margin:0;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:7px;max-height:240px;overflow:auto;white-space:pre;font:13px/1.4 ui-monospace,monospace}
 td.code-cell{white-space:normal;padding-top:0}
 .claimblock{margin-bottom:14px}
+nav{display:flex;gap:16px;margin:2px 0 6px}
 </style></head><body><main>
-<header><h1>CF Race</h1><div id="acct"><div id="userbtn"></div><span id="who"></span></div></header>
+<header><h1>CF Race</h1><div id="acct"><div id="userbtn"></div><span id="who"></span><button type="button" id="mute"></button></div></header>
+<nav><a href="/" data-nav>Home</a><a href="/leaderboard" data-nav>Leaderboard</a><a href="/history" data-nav>History</a></nav>
 <div id="msg" class="msg" role="status"></div>
 
 <section id="signin" class="card hide"><h2>Sign in to race</h2><button class="go" id="signinbtn">Sign in</button></section>
 
-<section id="sethandle" class="card hide"><h2>Link your Codeforces handle</h2>
- <div class="row" style="justify-content:flex-start"><label>Handle<input id="handle" placeholder="tourist"></label>
- <button class="go" id="savehandle">Link</button></div>
- <p class="tag">Your Elo starts at your Codeforces rating. This can't be changed later.</p></section>
+<section id="sethandle" class="card hide"><h2>Link your Codeforces account</h2>
+ <p class="tag">Sign in with Codeforces to prove the handle is yours. Your Elo starts at your Codeforces rating.</p>
+ <button class="go" id="verify">Verify with Codeforces</button>
+ <div class="row hide" id="devlink" style="justify-content:flex-start"><label>Handle (dev only)<input id="handle" placeholder="tourist"></label><button id="savehandle">Link</button></div></section>
 
 <section id="lobby" class="hide">
  <div class="card"><h2>Create a room</h2><div class="row">
@@ -50,16 +52,22 @@ td.code-cell{white-space:normal;padding-top:0}
   <label class="chk"><input id="prac" type="checkbox">Practice (unranked)</label>
   <button class="go" id="create">Create</button></div></div>
  <div class="card hide" id="tags"><h2>Tags</h2><div id="taglist"></div></div>
- <div class="card"><h2>Join a room</h2><div class="row" style="justify-content:flex-start">
+ <div class="card hide" id="activecard"><h2>Your active races</h2><div class="wrap"><table id="active"></table></div></div>
+ <div class="card"><h2>Join or watch a room</h2><div class="row" style="justify-content:flex-start">
   <label>Code<input id="jcode" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase;width:110px"></label>
-  <button id="join">Join</button></div></div>
+  <button id="join">Join</button><button id="watch">Watch</button></div></div>
+ <div class="card hide" id="acctcard"><h2>Your Codeforces account</h2><div id="acctinfo" class="tag"></div><p><button id="chg"></button></p>
+  <p class="tag">Changing your handle re-verifies through Codeforces, is limited to once every 7 days, and is blocked while you are in an active room. Earned Elo is rescaled by 10x per 600 rating points of difference.</p></div>
 </section>
+
+<section id="lbpage" class="hide"><div class="card"><h2>Leaderboard</h2><div class="wrap"><table id="lb"></table></div></div></section>
+<section id="histpage" class="hide"><div class="card"><h2>Duel history</h2><div id="rec" class="tag"></div><div class="wrap"><table id="hist"></table></div></div></section>
 
 <section id="room" class="hide">
  <div class="card"><div class="row"><div><div class="mut" id="mode"></div><div class="code" id="rcode"></div></div>
-  <div style="text-align:right"><div id="clock">--:--</div><div class="mut" id="status"></div></div></div></div>
+  <div style="text-align:right"><div id="clock">--:--</div><div class="mut" id="status"></div><button id="exit" style="margin-top:8px"></button></div></div></div>
  <div class="card hide" id="ready"><h2>Players</h2><div class="wrap"><table id="plist"></table></div>
-  <p class="row" style="justify-content:flex-start;align-items:center"><button id="readybtn"></button><button class="go hide" id="start">Start race</button><button id="leave">Leave</button><span class="tag" id="hint"></span></p></div>
+  <p class="row" style="justify-content:flex-start;align-items:center"><button id="readybtn"></button><button class="go hide" id="start">Start race</button><span class="tag" id="hint"></span></p></div>
  <div class="card"><h2>Problems</h2><div class="wrap"><table id="probs"></table></div></div>
  <div class="card hide" id="claim"><h2>Claim your points</h2><div id="claims"></div></div>
  <div class="card"><h2>Scoreboard</h2><div class="wrap"><table id="board"></table></div></div>
@@ -76,7 +84,17 @@ const TAGS=['2-sat','binary search','bitmasks','brute force','chess','combinator
 TAGS.forEach(t=>{const b=h('button',t,{type:'button'});b.onclick=()=>{$('tag').value=t;show('tags',false);$('info').setAttribute('aria-expanded','false')};$('taglist').append(b)});
 $('info').onclick=()=>{const o=$('tags').classList.contains('hide');show('tags',o);$('info').setAttribute('aria-expanded',String(o))};
 
-let S=null,offset=0,me=null,es=null,ticker=null;
+let S=null,offset=0,me=null,es=null,ticker=null,spectating=false,meInfo=null,ac=null,seen=null,muted=localStorage.getItem('cfr-mute')==='1';
+const prime=()=>{try{ac=ac||new AudioContext();if(ac.state==='suspended')ac.resume()}catch(e){}};
+addEventListener('pointerdown',prime);
+function beep(fr){if(muted)return;try{prime();let t=ac.currentTime;fr.forEach(f=>{const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(.15,t);g.gain.exponentialRampToValueAtTime(.001,t+.2);o.start(t);o.stop(t+.22);t+=.12})}catch(e){}}
+function checkSolves(){
+  const cur={};S.players.forEach(p=>Object.entries(S.scores[p.handle]||{}).forEach(([key,o])=>{if(o.solved)cur[p.handle+'|'+key]=1}));
+  if(seen&&seen.code===S.code)for(const id in cur)if(!seen.ids[id]){beep(id.split('|')[0]===me&&!spectating?[660,880,1320]:[330,247]);break}
+  seen={code:S.code,ids:cur};
+}
+const setMute=()=>{$('mute').textContent=muted?'Sound off':'Sound on';localStorage.setItem('cfr-mute',muted?'1':'0')};
+$('mute').onclick=()=>{muted=!muted;setMute();if(!muted)beep([880])};setMute();
 
 async function token(){return Clerk.session?await Clerk.session.getToken():''}
 async function api(method,path,body){
@@ -95,52 +113,108 @@ async function boot(){
   });
   await Clerk.load();
   Clerk.addListener(refresh);
+  const q=new URLSearchParams(location.search),note=q.get('oidc')||q.get('oidc_error');
+  if(note){say(note);history.replaceState(null,'','/')}
   refresh();
 }
 async function refresh(){
   $('userbtn').replaceChildren();$('who').textContent='';
   if(!Clerk.user){
-    me=null;leaveRoomView();
-    show('signin',true);show('sethandle',false);show('lobby',false);return;
+    me=null;detach();['lobby','lbpage','histpage'].forEach(v=>show(v,false));
+    show('signin',true);show('sethandle',false);return;
   }
   Clerk.mountUserButton($('userbtn'));
   show('signin',false);
   try{
     const m=await api('GET','/api/me');
-    if(!m.handle){show('sethandle',true);show('lobby',false);return}
-    me=m.handle;show('sethandle',false);
+    meInfo=m;
+    if(!m.handle){show('verify',m.oidc);show('devlink',!!m.dev);show('sethandle',true);['lobby','lbpage','histpage'].forEach(v=>show(v,false));return}
+    me=m.handle;show('sethandle',false);renderAcct(m);
     $('who').textContent=m.handle+' · Elo '+m.elo;
-    if(!S){show('lobby',true);
-      const last=localStorage.getItem('cfr-room');
-      if(last)try{await api('POST','/api/join',{code:last});await enter(last)}catch(e){localStorage.removeItem('cfr-room')}}
+    if(!S)nav();
   }catch(e){say(e.message)}
 }
+function renderAcct(m){
+  meInfo=m;show('acctcard',!!m.oidc);
+  $('who').textContent=m.handle+' · Elo '+m.elo;
+  $('acctinfo').textContent=m.handle+' - '+(m.verified?'verified':'not verified')+(m.verified&&m.changeBlock?'. '+m.changeBlock:'');
+  $('chg').textContent=m.verified?'Change handle':'Verify with Codeforces';
+  $('chg').disabled=!!(m.verified&&m.changeBlock);
+}
+async function startVerify(){try{const {url}=await api('POST','/api/oidc/start',{});location.href=url}catch(e){say(e.message)}}
+$('verify').onclick=startVerify;
+$('chg').onclick=()=>{if(meInfo.verified&&!confirm('Change your Codeforces handle? You will re-verify with Codeforces, your earned Elo will be rescaled to the new account, and you cannot change again for 7 days.'))return;startVerify()};
+function go(p,replace){history[replace?'replaceState':'pushState'](null,'',p);nav()}
+function detach(){if(es){es.close();es=null}S=null;show('room',false)}
+async function nav(){
+  if(!me)return;
+  const p=location.pathname,m=p.match(/^\/(race|watch)\/([A-Za-z]{5})\/?$/),code=m&&m[2].toUpperCase(),spec=!!m&&m[1]==='watch';
+  if(code){
+    if(S&&S.code===code&&es&&spectating===spec)return;
+    try{await api('POST',spec?'/api/spectate':'/api/join',{code});await enter(code,spec)}catch(e){say(e.message);go('/',true)}
+    return;
+  }
+  detach();['lobby','lbpage','histpage'].forEach(v=>show(v,false));
+  if(p==='/leaderboard'){show('lbpage',true);loadLB()}
+  else if(p==='/history'){show('histpage',true);loadHist()}
+  else{show('lobby',true);loadActive()}
+}
+document.addEventListener('click',e=>{const a=e.target.closest('a[data-nav]');if(!a||e.metaKey||e.ctrlKey||e.shiftKey)return;e.preventDefault();go(a.getAttribute('href'))});
+addEventListener('popstate',()=>nav());
 $('signinbtn').onclick=()=>Clerk.openSignIn();
 $('savehandle').onclick=async()=>{
   say('Checking...');
   try{await api('POST','/api/handle',{handle:$('handle').value.trim()});say('');refresh()}catch(e){say(e.message)}
 };
 $('create').onclick=async()=>{
-  try{const j=await api('POST','/api/create',{cfg:{n:$('n').value,minRating:$('minR').value,maxRating:$('maxR').value,tag:$('tag').value.trim(),minutes:$('min').value,practice:$('prac').checked}});await enter(j.code)}catch(e){say(e.message)}
+  try{const j=await api('POST','/api/create',{cfg:{n:$('n').value,minRating:$('minR').value,maxRating:$('maxR').value,tag:$('tag').value.trim(),minutes:$('min').value,practice:$('prac').checked}});go('/race/'+j.code)}catch(e){say(e.message)}
 };
+$('watch').onclick=()=>{const c=$('jcode').value.trim().toUpperCase();if(c.length===5)go('/watch/'+c);else say('Enter a 5-letter code.')};
 $('join').onclick=async()=>{
   const c=$('jcode').value.trim().toUpperCase();
-  try{await api('POST','/api/join',{code:c});await enter(c)}catch(e){say(e.message)}
+  if(c.length===5)go('/race/'+c);else say('Enter a 5-letter code.')
 };
 $('readybtn').onclick=()=>{const mine=S.players.find(p=>p.handle===me);api('POST','/api/ready',{code:S.code,ready:!(mine&&mine.ready)}).catch(e=>say(e.message))};
 $('start').onclick=()=>api('POST','/api/start',{code:S.code}).catch(e=>say(e.message));
-$('leave').onclick=async()=>{try{await api('POST','/api/leave',{code:S.code});localStorage.removeItem('cfr-room');leaveRoomView();refresh()}catch(e){say(e.message)}};
+$('exit').onclick=async()=>{
+  if(spectating){go('/');return}
+  const ph=phase(),live=ph==='countdown'||ph==='live';
+  if(live&&!confirm('Forfeit this race? It counts as a loss'+(S.cfg.ranked?' and costs Elo.':'.')))return;
+  if(ph==='done'&&now()<=S.endAt+3e5&&Object.values(S.scores[me]||{}).some(o=>o.solved&&!o.claimed)&&!confirm('You have unclaimed points. Leave anyway?'))return;
+  try{if(live)await api('POST','/api/forfeit',{code:S.code});if(ph!=='done')await api('POST','/api/leave',{code:S.code})}catch(e){say(e.message);return}
+  go('/');
+};
+const fill=(t,head,rows,empty)=>{t.replaceChildren();
+  if(!rows.length){const tr=h('tr');tr.append(h('td',empty,{className:'tag'}));t.append(tr);return}
+  const hr=h('tr');head.forEach(x=>hr.append(h('th',x)));t.append(hr);rows.forEach(r=>{const tr=h('tr');r.forEach(x=>tr.append(x instanceof Node?x:h('td',x)));t.append(tr)})};
+async function loadActive(){
+  api('GET','/api/me').then(renderAcct).catch(()=>{});
+  try{
+    const {rooms}=await api('GET','/api/active');show('activecard',rooms.length>0);
+    fill($('active'),[],rooms.map(r=>{const td=h('td'),a=h('a',r.code,{href:'/race/'+r.code});a.setAttribute('data-nav','');td.append(a);
+      return[td,r.cfg.ranked?'Ranked':'Practice',r.status,r.players+(r.players>1?' players':' player')]}),'');
+  }catch(e){}
+}
+async function loadLB(){
+  try{const {top}=await api('GET','/api/leaderboard');
+    fill($('lb'),['#','Player','Elo','Games'],top.map((u,i)=>[i+1,u.handle+(u.handle===me?' (you)':''),u.elo,u.games]),'No ranked games yet.')}catch(e){say(e.message)}
+}
+async function loadHist(){
+  try{const {history:hs}=await api('GET','/api/history');
+    const w=hs.filter(g=>g.of>1&&g.rank===1&&!g.forfeit).length,f=hs.filter(g=>g.forfeit).length;
+    $('rec').textContent=hs.length?hs.length+' races: '+w+' wins, '+(hs.length-w-f)+' other results, '+f+' forfeits':'';
+    fill($('hist'),['Date','Room','Mode','Result','Pts','Elo','Vs'],hs.map(g=>{const d=g.elo?g.elo.after-g.elo.before:null;
+      return[new Date(g.at).toLocaleString(),g.code,g.ranked?'Ranked':'Practice',h('td',g.forfeit?'Forfeit':'#'+g.rank+' of '+g.of,{className:g.forfeit?'warn':g.rank===1&&g.of>1?'ok':''}),g.pts,d==null?'-':(d>=0?'+':'')+d,g.opp.join(', ')||'-']}),'No races yet.')}catch(e){say(e.message)}
+}
 
-async function enter(code){
-  say('');localStorage.setItem('cfr-room',code);
-  show('lobby',false);show('room',true);$('rcode').textContent=code;
+async function enter(code,spec){
+  spectating=!!spec;say('');['lobby','lbpage','histpage'].forEach(v=>show(v,false));show('room',true);$('rcode').textContent=code;
   if(es)es.close();
-  es=new EventSource('/api/events?code='+code+'&token='+encodeURIComponent(await token()));
-  es.onmessage=e=>{S=JSON.parse(e.data);offset=S.now-Date.now();renderAll()};
-  es.onerror=()=>{if(es.readyState===2){say('Lost connection to the room.');leaveRoomView();refresh()}};
+  const e0=new EventSource('/api/events?code='+code+(spec?'&spectate=1':'')+'&token='+encodeURIComponent(await token()));es=e0;
+  e0.onmessage=e=>{S=JSON.parse(e.data);offset=S.now-Date.now();checkSolves();renderAll()};
+  e0.onerror=()=>{if(e0.readyState===2&&es===e0){es=null;S=null;setTimeout(nav,1500)}};
   if(!ticker)ticker=setInterval(tick,500);
 }
-function leaveRoomView(){if(es){es.close();es=null}S=null;show('room',false);if(me)show('lobby',true)}
 
 const k=p=>p.contestId+p.index;
 const now=()=>Date.now()+offset;
@@ -148,7 +222,8 @@ function phase(){const t=now();return !S.startAt?'lobby':t<S.startAt?'countdown'
 function renderClock(){
   const t=now(),ph=phase();
   $('clock').textContent=ph==='lobby'?mmss(S.cfg.minutes*6e4):ph==='countdown'?'Go in '+Math.ceil((S.startAt-t)/1000):ph==='live'?mmss(S.endAt-t):'00:00';
-  $('status').textContent={lobby:'Waiting for players',countdown:'Get ready',live:'Race is on',done:'Finished'}[ph];
+  $('exit').textContent=spectating?'Stop watching':ph==='countdown'||ph==='live'?'Forfeit':ph==='done'?'Exit':'Leave room';
+  $('status').textContent=spectating?'Watching live':{lobby:'Waiting for players',countdown:'Get ready',live:'Race is on. You can leave this page and come back.',done:'Finished'}[ph];
 }
 function renderReady(){
   const lobby=phase()==='lobby'&&!S.problems;
@@ -160,7 +235,7 @@ function renderReady(){
     const mine=S.players.find(p=>p.handle===me);
     $('readybtn').textContent=mine&&mine.ready?'Not ready':'Ready';
     const all=S.players.every(p=>p.ready),enough=!S.cfg.ranked||S.players.length>1;
-    show('start',S.host===me);
+    show('readybtn',!spectating);show('start',!spectating&&S.host===me);
     $('start').disabled=!(all&&enough);
     $('hint').textContent=!enough?'Ranked races need 2 or more players.':!all?'Waiting for everyone to ready up.':'';
   }
@@ -203,10 +278,10 @@ function renderBoard(){
   const hb=h('tr');['#','Player','Solved','Points','Elo'].forEach(x=>hb.append(h('th',x)));bd.append(hb);
   S.players.map(p=>{
     const all=Object.values(S.scores[p.handle]||{}).filter(o=>o.solved),v=all.filter(o=>o.claimed);
-    return{p,n:v.length,pts:v.reduce((a,o)=>a+o.pts,0),t:v.reduce((a,o)=>a+o.at,0),pend:all.length-v.length}
-  }).sort((a,b)=>b.pts-a.pts||a.t-b.t).forEach((r,i)=>{
+    return{p,f:p.forfeit?1:0,n:v.length,pts:v.reduce((a,o)=>a+o.pts,0),t:v.reduce((a,o)=>a+o.at,0),pend:all.length-v.length}
+  }).sort((a,b)=>a.f-b.f||b.pts-a.pts||a.t-b.t).forEach((r,i)=>{
     const e=S.eloResult&&S.eloResult[r.p.handle],d=e?e.after-e.before:0;
-    const tr=h('tr');tr.append(h('td',i+1),h('td',r.p.handle+(r.p.handle===me?' (you)':'')),h('td',r.n+'/'+(S.problems?S.problems.length:S.cfg.n)),
+    const tr=h('tr');tr.append(h('td',i+1),h('td',r.p.handle+(r.p.handle===me?' (you)':'')+(r.f?' (forfeited)':'')),h('td',r.n+'/'+(S.problems?S.problems.length:S.cfg.n)),
       h('td',r.pts+(r.pend?' ('+r.pend+' unclaimed)':'')),h('td',e?e.after+' ('+(d>=0?'+':'')+d+')':r.p.elo));bd.append(tr);
   });
 }
@@ -233,7 +308,7 @@ function renderSubs(){
 }
 function renderAll(){
   if(S.error)say(S.error);
-  $('mode').textContent=S.cfg.ranked?'Ranked':'Practice (unranked)';
+  $('mode').textContent=(S.cfg.ranked?'Ranked':'Practice (unranked)')+(spectating?' - spectating':'');
   renderClock();renderReady();renderProblems();renderClaims();renderBoard();renderSubs();
 }
 function tick(){if(!S)return;renderClock();renderProblems()}
