@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CF Race</title>
+<style>
+:root{--bg:#f3f5fa;--card:#fff;--ink:#16203a;--mut:#5d6885;--line:#d5dbea;--acc:#e8492f;--ok:#1c8a55}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1526;--card:#182038;--ink:#e8ecf7;--mut:#96a1c0;--line:#2a3558;--acc:#ff6a50;--ok:#3ecf8e}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:16px 16px 60px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+h1{font-size:34px;margin:0}h2{font-size:19px;margin:0 0 10px}
+#acct{display:flex;align-items:center;gap:10px;min-height:36px}
+.mut,.tag{color:var(--mut)}.tag{font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin:14px 0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end;justify-content:space-between}
+label{display:flex;flex-direction:column;font-size:13px;color:var(--mut);gap:3px}
+label.chk{flex-direction:row;align-items:center;gap:6px;padding-bottom:9px}
+input,select,button,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px 10px}
+button{cursor:pointer;font-weight:600}button.go{background:var(--acc);border-color:var(--acc);color:#fff}
+button:disabled{opacity:.5;cursor:default}
+#clock{font:700 46px/1 ui-monospace,monospace}.code{font:700 26px ui-monospace,monospace;letter-spacing:4px}
+.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%}
+td,th{padding:8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.ok{color:var(--ok);font-weight:700}.warn{color:var(--acc);font-weight:700}
+a{color:var(--acc)}.hide{display:none}.msg{color:var(--acc);min-height:1.4em}
+.inline{display:flex;gap:6px}#taglist{display:flex;flex-wrap:wrap;gap:6px}#taglist button{font-weight:400;padding:4px 10px}
+textarea{width:100%;min-height:130px;font:13px/1.4 ui-monospace,monospace;margin:6px 0}
+pre{margin:0;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:7px;max-height:240px;overflow:auto;white-space:pre;font:13px/1.4 ui-monospace,monospace}
+td.code-cell{white-space:normal;padding-top:0}
+.claimblock{margin-bottom:14px}
+</style></head><body><main>
+<header><h1>CF Race</h1><div id="acct"><div id="userbtn"></div><span id="who"></span></div></header>
+<div id="msg" class="msg" role="status"></div>
+
+<section id="signin" class="card hide"><h2>Sign in to race</h2><button class="go" id="signinbtn">Sign in</button></section>
+
+<section id="sethandle" class="card hide"><h2>Link your Codeforces handle</h2>
+ <div class="row" style="justify-content:flex-start"><label>Handle<input id="handle" placeholder="tourist"></label>
+ <button class="go" id="savehandle">Link</button></div>
+ <p class="tag">Your Elo starts at your Codeforces rating. This can't be changed later.</p></section>
+
+<section id="lobby" class="hide">
+ <div class="card"><h2>Create a room</h2><div class="row">
+  <label>Problems<select id="n"><option>1</option><option>2</option><option selected>3</option><option>5</option></select></label>
+  <label>Min rating<input id="minR" type="number" value="800" step="100" style="width:90px"></label>
+  <label>Max rating<input id="maxR" type="number" value="1400" step="100" style="width:90px"></label>
+  <label>Tag<span class="inline"><input id="tag" placeholder="any" style="width:120px"><button type="button" id="info" aria-label="Show all tags" aria-expanded="false">i</button></span></label>
+  <label>Minutes<input id="min" type="number" value="30" style="width:80px"></label>
+  <label class="chk"><input id="prac" type="checkbox">Practice (unranked)</label>
+  <button class="go" id="create">Create</button></div></div>
+ <div class="card hide" id="tags"><h2>Tags</h2><div id="taglist"></div></div>
+ <div class="card"><h2>Join a room</h2><div class="row" style="justify-content:flex-start">
+  <label>Code<input id="jcode" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase;width:110px"></label>
+  <button id="join">Join</button></div></div>
+</section>
+
+<section id="room" class="hide">
+ <div class="card"><div class="row"><div><div class="mut" id="mode"></div><div class="code" id="rcode"></div></div>
+  <div style="text-align:right"><div id="clock">--:--</div><div class="mut" id="status"></div></div></div></div>
+ <div class="card hide" id="ready"><h2>Players</h2><div class="wrap"><table id="plist"></table></div>
+  <p class="row" style="justify-content:flex-start;align-items:center"><button id="readybtn"></button><button class="go hide" id="start">Start race</button><button id="leave">Leave</button><span class="tag" id="hint"></span></p></div>
+ <div class="card"><h2>Problems</h2><div class="wrap"><table id="probs"></table></div></div>
+ <div class="card hide" id="claim"><h2>Claim your points</h2><div id="claims"></div></div>
+ <div class="card"><h2>Scoreboard</h2><div class="wrap"><table id="board"></table></div></div>
+ <div class="card"><h2>Submissions</h2><div class="wrap"><table id="subs"></table></div></div>
+</section>
+
+<script>
+const $=id=>document.getElementById(id);
+const say=t=>$('msg').textContent=t||'';
+const h=(t,x,a)=>Object.assign(document.createElement(t),x!=null?{textContent:x}:{},a||{});
+const mmss=ms=>{const s=Math.floor(Math.max(0,ms)/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+const show=(id,on)=>$(id).classList.toggle('hide',!on);
+const TAGS=['2-sat','binary search','bitmasks','brute force','chess','combinatorics','constructive algorithms','data structures','dfs and similar','divide and conquer','dp','dsu','expression parsing','fft','flows','games','geometry','graph matchings','graphs','greedy','hashing','implementation','interactive','math','matrices','meet-in-the-middle','number theory','probabilities','schedules','shortest paths','sortings','string suffix structures','strings','ternary search','trees','two pointers'];
+TAGS.forEach(t=>{const b=h('button',t,{type:'button'});b.onclick=()=>{$('tag').value=t;show('tags',false);$('info').setAttribute('aria-expanded','false')};$('taglist').append(b)});
+$('info').onclick=()=>{const o=$('tags').classList.contains('hide');show('tags',o);$('info').setAttribute('aria-expanded',String(o))};
+
+let S=null,offset=0,me=null,es=null,ticker=null;
+
+async function token(){return Clerk.session?await Clerk.session.getToken():''}
+async function api(method,path,body){
+  const r=await fetch(path,{method,headers:{Authorization:'Bearer '+await token(),'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+  const j=await r.json();if(!r.ok)throw new Error(j.error||'Request failed');return j;
+}
+
+async function boot(){
+  const cfg=await (await fetch('/api/config')).json();
+  await new Promise((ok,bad)=>{
+    const s=document.createElement('script');
+    s.async=true;s.crossOrigin='anonymous';
+    s.setAttribute('data-clerk-publishable-key',cfg.publishableKey);
+    s.src='https://'+cfg.frontendApi+'/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
+    s.onload=ok;s.onerror=()=>bad(new Error('Could not load Clerk.'));document.head.append(s);
+  });
+  await Clerk.load();
+  Clerk.addListener(refresh);
+  refresh();
+}
+async function refresh(){
+  $('userbtn').replaceChildren();$('who').textContent='';
+  if(!Clerk.user){
+    me=null;leaveRoomView();
+    show('signin',true);show('sethandle',false);show('lobby',false);return;
+  }
+  Clerk.mountUserButton($('userbtn'));
+  show('signin',false);
+  try{
+    const m=await api('GET','/api/me');
+    if(!m.handle){show('sethandle',true);show('lobby',false);return}
+    me=m.handle;show('sethandle',false);
+    $('who').textContent=m.handle+' · Elo '+m.elo;
+    if(!S){show('lobby',true);
+      const last=localStorage.getItem('cfr-room');
+      if(last)try{await api('POST','/api/join',{code:last});await enter(last)}catch(e){localStorage.removeItem('cfr-room')}}
+  }catch(e){say(e.message)}
+}
+$('signinbtn').onclick=()=>Clerk.openSignIn();
+$('savehandle').onclick=async()=>{
+  say('Checking...');
+  try{await api('POST','/api/handle',{handle:$('handle').value.trim()});say('');refresh()}catch(e){say(e.message)}
+};
+$('create').onclick=async()=>{
+  try{const j=await api('POST','/api/create',{cfg:{n:$('n').value,minRating:$('minR').value,maxRating:$('maxR').value,tag:$('tag').value.trim(),minutes:$('min').value,practice:$('prac').checked}});await enter(j.code)}catch(e){say(e.message)}
+};
+$('join').onclick=async()=>{
+  const c=$('jcode').value.trim().toUpperCase();
+  try{await api('POST','/api/join',{code:c});await enter(c)}catch(e){say(e.message)}
+};
+$('readybtn').onclick=()=>{const mine=S.players.find(p=>p.handle===me);api('POST','/api/ready',{code:S.code,ready:!(mine&&mine.ready)}).catch(e=>say(e.message))};
+$('start').onclick=()=>api('POST','/api/start',{code:S.code}).catch(e=>say(e.message));
+$('leave').onclick=async()=>{try{await api('POST','/api/leave',{code:S.code});localStorage.removeItem('cfr-room');leaveRoomView();refresh()}catch(e){say(e.message)}};
+
+async function enter(code){
+  say('');localStorage.setItem('cfr-room',code);
+  show('lobby',false);show('room',true);$('rcode').textContent=code;
+  if(es)es.close();
+  es=new EventSource('/api/events?code='+code+'&token='+encodeURIComponent(await token()));
+  es.onmessage=e=>{S=JSON.parse(e.data);offset=S.now-Date.now();renderAll()};
+  es.onerror=()=>{if(es.readyState===2){say('Lost connection to the room.');leaveRoomView();refresh()}};
+  if(!ticker)ticker=setInterval(tick,500);
+}
+function leaveRoomView(){if(es){es.close();es=null}S=null;show('room',false);if(me)show('lobby',true)}
+
+const k=p=>p.contestId+p.index;
+const now=()=>Date.now()+offset;
+function phase(){const t=now();return !S.startAt?'lobby':t<S.startAt?'countdown':t<S.endAt?'live':'done'}
+function renderClock(){
+  const t=now(),ph=phase();
+  $('clock').textContent=ph==='lobby'?mmss(S.cfg.minutes*6e4):ph==='countdown'?'Go in '+Math.ceil((S.startAt-t)/1000):ph==='live'?mmss(S.endAt-t):'00:00';
+  $('status').textContent={lobby:'Waiting for players',countdown:'Get ready',live:'Race is on',done:'Finished'}[ph];
+}
+function renderReady(){
+  const lobby=phase()==='lobby'&&!S.problems;
+  show('ready',lobby&&!S.startAt);
+  if(!S.startAt){
+    const pt=$('plist');pt.replaceChildren();
+    const hr=h('tr');['Player','Elo','Ready'].forEach(x=>hr.append(h('th',x)));pt.append(hr);
+    S.players.forEach(p=>{const tr=h('tr');tr.append(h('td',p.handle+(p.handle===me?' (you)':'')+(p.handle===S.host?' - host':'')),h('td',p.elo),h('td',p.ready?'Ready':'Not ready',{className:p.ready?'ok':'tag'}));pt.append(tr)});
+    const mine=S.players.find(p=>p.handle===me);
+    $('readybtn').textContent=mine&&mine.ready?'Not ready':'Ready';
+    const all=S.players.every(p=>p.ready),enough=!S.cfg.ranked||S.players.length>1;
+    show('start',S.host===me);
+    $('start').disabled=!(all&&enough);
+    $('hint').textContent=!enough?'Ranked races need 2 or more players.':!all?'Waiting for everyone to ready up.':'';
+  }
+}
+function renderProblems(){
+  const st=S.startAt,mins=st?Math.max(0,Math.floor((now()-st)/6e4)):0,mine=S.scores[me]||{};
+  const pt=$('probs');pt.replaceChildren();
+  const hr=h('tr');['Problem','Rating','Base','Worth to you now'].forEach(x=>hr.append(h('th',x)));pt.append(hr);
+  (S.problems||[]).forEach(p=>{
+    const m=mine[k(p)]||{wrong:0},tr=h('tr'),td=h('td');
+    td.append(h('a',p.contestId+p.index+' '+p.name,{href:'https://codeforces.com/problemset/problem/'+p.contestId+'/'+p.index,target:'_blank',rel:'noopener'}));
+    let w;
+    if(m.solved&&m.claimed)w=h('td','Solved: '+m.pts+' pts',{className:'ok'});
+    else if(m.solved)w=h('td','Accepted. Paste code to claim '+m.pts+' pts',{className:'warn'});
+    else w=h('td',Math.max(0,p.pts-mins*S.rules.DECAY_PER_MIN-m.wrong*S.rules.WRONG_PENALTY)+(m.wrong?' ('+m.wrong+' wrong)':''));
+    tr.append(td,h('td',p.rating),h('td',p.pts),w);pt.append(tr);
+  });
+  if(!S.problems){const tr=h('tr');tr.append(h('td','Problems appear when the race starts.',{colSpan:4,className:'tag'}));pt.append(tr)}
+}
+function renderClaims(){
+  const box=$('claims'),mine=S.scores[me]||{};
+  let any=false;
+  (S.problems||[]).forEach(p=>{
+    const id='cl-'+S.code+'-'+k(p);let b=document.getElementById(id);
+    if(!b){
+      b=h('div',null,{id,className:'claimblock hide'});
+      const ta=h('textarea',null,{placeholder:'Paste your accepted solution here',spellcheck:false});
+      const btn=h('button','Claim points',{className:'go'});
+      btn.onclick=async()=>{try{await api('POST','/api/code',{code:S.code,key:k(p),text:ta.value});say('')}catch(e){say(e.message)}};
+      b.append(h('div',null,{className:'lbl'}),ta,btn);box.append(b);
+    }
+    const o=mine[k(p)],need=o&&o.solved&&!o.claimed&&now()<=S.endAt+3e5;
+    b.classList.toggle('hide',!need);
+    if(need){any=true;b.querySelector('.lbl').textContent=p.contestId+p.index+' '+p.name+' is worth '+o.pts+' pts once you paste your code.'}
+  });
+  show('claim',any);
+}
+function renderBoard(){
+  const bd=$('board');bd.replaceChildren();
+  const hb=h('tr');['#','Player','Solved','Points','Elo'].forEach(x=>hb.append(h('th',x)));bd.append(hb);
+  S.players.map(p=>{
+    const all=Object.values(S.scores[p.handle]||{}).filter(o=>o.solved),v=all.filter(o=>o.claimed);
+    return{p,n:v.length,pts:v.reduce((a,o)=>a+o.pts,0),t:v.reduce((a,o)=>a+o.at,0),pend:all.length-v.length}
+  }).sort((a,b)=>b.pts-a.pts||a.t-b.t).forEach((r,i)=>{
+    const e=S.eloResult&&S.eloResult[r.p.handle],d=e?e.after-e.before:0;
+    const tr=h('tr');tr.append(h('td',i+1),h('td',r.p.handle+(r.p.handle===me?' (you)':'')),h('td',r.n+'/'+(S.problems?S.problems.length:S.cfg.n)),
+      h('td',r.pts+(r.pend?' ('+r.pend+' unclaimed)':'')),h('td',e?e.after+' ('+(d>=0?'+':'')+d+')':r.p.elo));bd.append(tr);
+  });
+}
+function renderSubs(){
+  const tb=$('subs');tb.replaceChildren();
+  const hr=h('tr');['Time','Player','Problem','Verdict','Language'].forEach(x=>hr.append(h('th',x)));tb.append(hr);
+  const all=[];S.players.forEach(p=>(S.log[p.handle]||[]).forEach(s=>all.push({...s,p:p.handle})));
+  all.sort((a,b)=>b.t-a.t);
+  const first={};
+  all.slice().reverse().forEach(s=>{const id=s.p+'|'+s.key;if(s.verdict==='OK'&&!first[id])first[id]=s.id});
+  if(!all.length){const tr=h('tr');tr.append(h('td','No submissions yet.',{colSpan:5,className:'tag'}));tb.append(tr);return}
+  const name={};(S.problems||[]).forEach(p=>name[k(p)]=p.contestId+p.index+' '+p.name);
+  all.forEach(s=>{
+    const tr=h('tr'),v=s.verdict==='OK'?'Accepted':s.verdict.toLowerCase().replace(/_/g,' ').replace(/^./,c=>c.toUpperCase());
+    const vt=h('td');vt.append(h('a',v,{href:'https://codeforces.com/contest/'+s.contestId+'/submission/'+s.id,target:'_blank',rel:'noopener',className:s.verdict==='OK'?'ok':''}));
+    tr.append(h('td',mmss(s.t-S.startAt)),h('td',s.p+(s.p===me?' (you)':'')),h('td',name[s.key]||s.key),vt,h('td',s.lang));tb.append(tr);
+    if(s.verdict==='OK'&&first[s.p+'|'+s.key]===s.id){
+      const c=(S.codes[s.p]||{})[s.key],r=h('tr'),td=h('td',null,{colSpan:5,className:'code-cell'});
+      if(typeof c==='string')td.append(h('pre',c));
+      else td.append(h('span',c===true?'Code pasted. Others can see it after the paste window closes.':'Code not pasted yet.',{className:'tag'}));
+      r.append(td);tb.append(r);
+    }
+  });
+}
+function renderAll(){
+  if(S.error)say(S.error);
+  $('mode').textContent=S.cfg.ranked?'Ranked':'Practice (unranked)';
+  renderClock();renderReady();renderProblems();renderClaims();renderBoard();renderSubs();
+}
+function tick(){if(!S)return;renderClock();renderProblems()}
+boot().catch(e=>say(e.message));
+</script></main></body></html>
