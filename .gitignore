@@ -2,3 +2,5 @@
 data.json
 data.json.tmp
 node_modules
+rooms.json
+rooms.json.tmp
