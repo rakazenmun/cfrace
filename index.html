@@ -240,7 +240,7 @@ function renderReady(){
   }
 }
 function renderProblems(){
-  const st=S.startAt,mins=st?Math.max(0,Math.floor((now()-st)/6e4)):0,mine=S.scores[me]||{};
+  const st=S.startAt,el=st?Math.max(0,now()-st):0,mine=S.scores[me]||{};
   const pt=$('probs');pt.replaceChildren();
   const hr=h('tr');['Problem','Rating','Base','Worth to you now'].forEach(x=>hr.append(h('th',x)));pt.append(hr);
   (S.problems||[]).forEach(p=>{
@@ -249,7 +249,7 @@ function renderProblems(){
     let w;
     if(m.solved&&m.claimed)w=h('td','Solved: '+m.pts+' pts',{className:'ok'});
     else if(m.solved)w=h('td','Accepted. Paste code to claim '+m.pts+' pts',{className:'warn'});
-    else w=h('td',Math.max(0,p.pts-mins*S.rules.DECAY_PER_MIN-m.wrong*S.rules.WRONG_PENALTY)+(m.wrong?' ('+m.wrong+' wrong)':''));
+    else w=h('td',Math.max(0,Math.round(p.pts*(1-(el+m.wrong*S.rules.WRONG_MIN*6e4)/(S.cfg.minutes*6e4))))+(m.wrong?' ('+m.wrong+' wrong)':''));
     tr.append(td,h('td',p.rating),h('td',p.pts),w);pt.append(tr);
   });
   if(!S.problems){const tr=h('tr');tr.append(h('td','Problems appear when the race starts.',{colSpan:4,className:'tag'}));pt.append(tr)}

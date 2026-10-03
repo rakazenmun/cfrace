@@ -18,9 +18,7 @@ const FRONTEND_API = Buffer.from(PUBLISHABLE_KEY.replace(/^pk_(test|live)_/, '')
 const ISSUER = 'https://' + FRONTEND_API;
 
 const MIN_PTS = 1000, MAX_PTS = 3500;
-const DECAY_PER_MIN = 25;
-const WRONG_PENALTY = 125;
-const FLOOR = 0;
+const WRONG_MIN = 5;
 const POLL_MS = 6000;
 const GRACE_MS = 5 * 60000;
 const MAX_CODE = 20000;
@@ -147,7 +145,7 @@ function score(room, subs) {
     if (o.solved) return;
     if (s.verdict === 'OK') {
       o.solved = true; o.at = t;
-      o.pts = Math.max(FLOOR, p.pts - Math.floor((t - room.startAt) / 60000) * DECAY_PER_MIN - o.wrong * WRONG_PENALTY);
+      o.pts = Math.max(0, Math.round(p.pts * (1 - ((t - room.startAt) + o.wrong * WRONG_MIN * 60000) / (room.cfg.minutes * 60000))));
     } else if (s.verdict && s.verdict !== 'COMPILATION_ERROR' && s.verdict !== 'TESTING') o.wrong++;
   });
   return out;
@@ -213,7 +211,7 @@ function view(room, viewer) {
     code: room.code, host: room.host, cfg: room.cfg, now: Date.now(), startAt: room.startAt, endAt: room.endAt,
     players: [...room.players].map(h => ({ handle: h, elo: (byHandle(h) || {}).elo, ready: room.ready.has(h), forfeit: room.forfeit.has(h) })),
     problems: live ? room.problems : null, scores, codes, log: room.log, eloResult: room.eloResult || null,
-    error: room.error || null, rules: { DECAY_PER_MIN, WRONG_PENALTY }
+    error: room.error || null, rules: { WRONG_MIN }
   };
 }
 function push(room) {
