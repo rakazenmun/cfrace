@@ -350,6 +350,9 @@ http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(fs.readFileSync(path.join(__dirname, 'index.html')));
     }
+    // Keep this endpoint unauthenticated so external uptime monitors can verify
+    // that the process is accepting requests without needing a user session.
+    if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ok: true });
     if (req.method === 'GET' && url.pathname === '/api/config') return send(res, 200, { publishableKey: PUBLISHABLE_KEY, frontendApi: FRONTEND_API });
 
     const bearer = (req.headers.authorization || '').replace(/^Bearer /, '') || url.searchParams.get('token');
