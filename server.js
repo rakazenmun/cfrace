@@ -346,13 +346,10 @@ http.createServer(async (req, res) => {
   try {
     if (!rl('ip:' + clientIp(req), 300, 60000)) return fail(res, 429, 'Too many requests. Slow down.');
     if (req.method === 'GET' && url.pathname === '/auth/codeforces/callback') return oidcCallback(url, res);
-    if (req.method === 'GET' && (['/', '/leaderboard', '/history'].includes(url.pathname) || /^\/(race|watch)\/[A-Za-z]{5}$/.test(url.pathname))) {
+    if (['GET', 'HEAD'].includes(req.method) && (['/', '/leaderboard', '/history'].includes(url.pathname) || /^\/(race|watch)\/[A-Za-z]{5}$/.test(url.pathname))) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(fs.readFileSync(path.join(__dirname, 'index.html')));
     }
-    // Keep this endpoint unauthenticated so external uptime monitors can verify
-    // that the process is accepting requests without needing a user session.
-    if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ok: true });
     if (req.method === 'GET' && url.pathname === '/api/config') return send(res, 200, { publishableKey: PUBLISHABLE_KEY, frontendApi: FRONTEND_API });
 
     const bearer = (req.headers.authorization || '').replace(/^Bearer /, '') || url.searchParams.get('token');
