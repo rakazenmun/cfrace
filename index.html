@@ -60,7 +60,7 @@ nav{display:flex;gap:16px;margin:2px 0 6px}
 </section>
 
 <section id="lbpage" class="hide"><div class="card"><h2>Leaderboard</h2><div class="wrap"><table id="lb"></table></div></div></section>
-<section id="adminpage" class="hide"><div class="card"><h2>Admin</h2><div class="row"><label>Room <select id="adminRooms"></select></label><button id="adminReload">Refresh</button></div><label>Reason for change <input id="adminReason" placeholder="Required for every change" maxlength="500"></label><h3>Account ratings</h3><div class="row"><select id="adminUsers"></select><input id="adminUserElo" type="number" min="0" max="100000"><button id="adminSetUserElo">Set account Elo</button></div><div id="adminDetail"></div></div></section>
+<section id="adminpage" class="hide"><div class="card"><h2>Admin</h2><div class="row"><label>Room <select id="adminRooms"></select></label><button id="adminReload">Refresh</button></div><label>Reason for change <input id="adminReason" placeholder="Required for every change" maxlength="500"></label><h3>Accounts</h3><div class="row"><select id="adminUsers"></select><input id="adminUserElo" type="number" min="0" max="100000"><button id="adminSetUserElo">Set account Elo</button></div><div class="row"><label>Clerk user ID <input id="adminProfileId" placeholder="user_..."></label><label>Handle <input id="adminProfileHandle"></label><label>CF rating <input id="adminProfileRating" type="number" min="0"></label><label>Games <input id="adminProfileGames" type="number" min="0"></label><label>Verified <input id="adminProfileVerified" type="checkbox"></label><label>Handle change timestamp (0 resets cooldown) <input id="adminProfileCooldown" type="number" min="0"></label><button id="adminSaveProfile">Save account</button><button id="adminNewProfile">New account profile</button></div><div id="adminDetail"></div></div></section>
 <section id="archivepage" class="hide"><div class="card"><h2>Finished rooms</h2><div class="wrap"><table id="archive"></table></div><button id="archiveMore" class="hide">Load more</button></div></section>
 <section id="histpage" class="hide"><div class="card"><h2>Duel history</h2><div id="rec" class="tag"></div><div class="wrap"><table id="hist"></table></div></div></section>
 
@@ -238,7 +238,27 @@ async function adminAction(action,fields={}){
 function adminButton(label,action,fields){const b=h('button',label);b.onclick=()=>adminAction(action,typeof fields==='function'?fields():fields);return b}
 function adminInput(value,type='text'){return h('input',null,{value:value??'',type})}
 let adminUsers=[];
-function pickAdminUser(){const u=adminUsers.find(u=>u.handle===$('adminUsers').value);$('adminUserElo').value=u?.elo??''}
+let creatingProfile=false;
+function pickAdminUser(){
+  creatingProfile=false;const u=adminUsers.find(u=>u.handle===$('adminUsers').value);
+  $('adminUserElo').value=u?.elo??0;$('adminProfileId').value=u?.id??'';$('adminProfileId').readOnly=!!u;
+  $('adminProfileHandle').value=u?.handle??'';$('adminProfileRating').value=u?.cfRating??0;
+  $('adminProfileGames').value=u?.games??0;$('adminProfileVerified').checked=!!u?.verified;
+  $('adminProfileCooldown').value=u?.handleChangedAt??0;
+}
+$('adminNewProfile').onclick=()=>{pickAdminUser();creatingProfile=true;$('adminProfileId').readOnly=false;
+  ['adminProfileId','adminProfileHandle'].forEach(id=>$(id).value='');
+  ['adminUserElo','adminProfileRating','adminProfileGames','adminProfileCooldown'].forEach(id=>$(id).value=0);
+  $('adminProfileVerified').checked=false;$('adminProfileId').focus();say('Enter an existing Clerk account ID and the new profile details.');
+};
+$('adminSaveProfile').onclick=async()=>{
+  const reason=$('adminReason').value.trim();if(!reason){say('Enter a reason first.');return}
+  const body={create:creatingProfile,userId:$('adminProfileId').value,handle:$('adminProfileHandle').value,
+    elo:+$('adminUserElo').value,cfRating:+$('adminProfileRating').value,games:+$('adminProfileGames').value,
+    verified:$('adminProfileVerified').checked,handleChangedAt:+$('adminProfileCooldown').value,reason};
+  if(!confirm((creatingProfile?'Create':'Update')+' profile for '+body.handle+'?'))return;
+  try{await api('POST','/api/admin/profile',body);say('Account saved.');await loadAdmin();$('adminUsers').value=body.handle;pickAdminUser()}catch(e){say(e.message)}
+};
 $('adminUsers').onchange=pickAdminUser;
 $('adminSetUserElo').onclick=async()=>{
   const reason=$('adminReason').value.trim();if(!reason){say('Enter a reason first.');return}

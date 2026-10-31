@@ -341,6 +341,7 @@ function renameHandle(oldHandle, newHandle) {
   for (const r of rooms.values()) {
     for (const field of ['players', 'ready', 'forfeit']) if (r[field].delete(oldHandle)) r[field].add(newHandle);
     if (r.host === oldHandle) r.host = newHandle;
+    for (const client of r.subs) if (client.handle === oldHandle) client.handle = newHandle;
     for (const field of ['scores', 'codes', 'log', 'invalidCodes', 'bonus', 'eloResult']) {
       if (r[field] && Object.hasOwn(r[field], oldHandle)) { r[field][newHandle] = r[field][oldHandle]; delete r[field][oldHandle]; }
     }
@@ -472,7 +473,40 @@ http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/admin')) {
       if (!ADMIN_USER_ID || userId !== ADMIN_USER_ID) return fail(res, 404, 'Not found');
       if (req.method === 'GET' && url.pathname === '/api/admin/users')
-        return send(res, 200, { users: Object.values(users).map(u => ({ handle: u.handle, elo: u.elo, games: u.games || 0 })) });
+        return send(res, 200, { users: Object.entries(users).map(([id, u]) => ({ id, handle: u.handle, elo: u.elo, games: u.games || 0, cfRating: u.cfRating, verified: !!u.verified, handleChangedAt: u.handleChangedAt || 0 })) });
+      if (req.method === 'POST' && url.pathname === '/api/admin/profile') {
+        const b = await readBody(req), id = String(b.userId || '').trim(), handle = String(b.handle || '').trim();
+        const reason = String(b.reason || '').trim().slice(0, 500);
+        if (!/^user_[A-Za-z0-9]+$/.test(id) || !/^[A-Za-z0-9_.-]{1,24}$/.test(handle) || !reason)
+          return fail(res, 400, 'Provide a Clerk user ID, valid handle, and reason.');
+        for (const field of ['elo', 'cfRating', 'games', 'handleChangedAt'])
+          if (!Number.isSafeInteger(b[field]) || b[field] < 0) return fail(res, 400, 'Ratings, games and cooldown timestamp must be nonnegative integers.');
+        if (typeof b.verified !== 'boolean') return fail(res, 400, 'Verification must be true or false.');
+        const existing = Object.hasOwn(users, id) ? users[id] : null;
+        if (b.create ? !!existing : !existing) return fail(res, 400, b.create ? 'Clerk account already has a profile.' : 'Profile not found.');
+        const other = byHandle(handle);
+        if (other && other !== existing) return fail(res, 400, 'Handle belongs to another account.');
+        const before = existing ? { handle: existing.handle, elo: existing.elo, cfRating: existing.cfRating,
+          games: existing.games || 0, verified: !!existing.verified, handleChangedAt: existing.handleChangedAt || 0 } : null;
+        const restart = [];
+        if (existing && existing.handle !== handle) {
+          for (const r of rooms.values()) if (r.players.has(existing.handle) && r.startAt && !r.finalized && !r.deleted) {
+            r.pollGeneration = (r.pollGeneration || 0) + 1; restart.push(r);
+          }
+          renameHandle(existing.handle, handle);
+        }
+        const u = existing || { history: [] };
+        Object.assign(u, { handle, elo: b.elo, cfRating: b.cfRating, games: b.games, verified: b.verified, handleChangedAt: b.handleChangedAt });
+        u.adminReviews = u.adminReviews || [];
+        u.adminReviews.push({ at: Date.now(), action: b.create ? 'createProfile' : 'editProfile', before,
+          after: { handle, elo: b.elo, cfRating: b.cfRating, games: b.games, verified: b.verified, handleChangedAt: b.handleChangedAt }, reason });
+        users[id] = u;
+        await saveUsers();
+        for (const r of restart) background(pollLoop(r));
+        for (const r of rooms.values()) if (r.players.has(handle))
+          r.subs.forEach(client => client.write('data: ' + JSON.stringify(view(r, client.handle)) + '\n\n'));
+        return send(res, 200, { ok: true });
+      }
       if (req.method === 'POST' && url.pathname === '/api/admin/user') {
         const b = await readBody(req), u = byHandle(String(b.handle || ''));
         if (!u) return fail(res, 404, 'Linked account not found.');
