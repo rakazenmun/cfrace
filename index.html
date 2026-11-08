@@ -24,7 +24,25 @@ button:disabled{opacity:.5;cursor:default}
 td,th{padding:8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
 .ok{color:var(--ok);font-weight:700}.warn{color:var(--acc);font-weight:700}
 a{color:var(--acc)}.hide{display:none}.msg{color:var(--acc);min-height:1.4em}
-.inline{display:flex;gap:6px}#taglist{display:flex;flex-wrap:wrap;gap:6px}#taglist button{font-weight:400;padding:4px 10px}
+.inline{display:flex;gap:6px}
+#taglist,#taglegend{display:flex;flex-wrap:wrap;gap:6px}
+#taglegend{margin:0 0 10px;font-size:12px}
+.tag-topic{display:inline-flex}
+#taglist button,#taglegend span{font-weight:400;padding:4px 10px}
+#taglegend span,.tag-pick{background:var(--topic-bg,var(--bg));color:var(--topic-ink,var(--ink));border:1px solid var(--topic-line,var(--line))}
+#taglegend span{border-radius:7px}
+.tag-pick{border-radius:7px 0 0 7px}
+.tag-info{border-radius:0 7px 7px 0;border-left:0}
+.tag-bronze{--topic-bg:#f5ddc5;--topic-ink:#653610;--topic-line:#bc8256}
+.tag-silver{--topic-bg:#e3e9f1;--topic-ink:#334259;--topic-line:#8291a6}
+.tag-gold{--topic-bg:#ffedaf;--topic-ink:#624600;--topic-line:#bd9531}
+.tag-plat{--topic-bg:#c9f2eb;--topic-ink:#105149;--topic-line:#52a99c}
+.tag-adv{--topic-bg:#eee0ff;--topic-ink:#513179;--topic-line:#a582cb}
+.tag-unmatched{--topic-bg:repeating-linear-gradient(135deg,var(--bg) 0 6px,var(--line) 6px 8px)}
+#tag-guide{width:min(420px,calc(100% - 32px));background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px}
+#tag-guide::backdrop{background:#0007}
+#tag-guide ul{padding-left:22px}
+#tag-guide li+li{margin-top:6px}
 textarea{width:100%;min-height:130px;font:13px/1.4 ui-monospace,monospace;margin:6px 0}
 pre{margin:0;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:7px;max-height:240px;overflow:auto;white-space:pre;font:13px/1.4 ui-monospace,monospace}
 td.code-cell{white-space:normal;padding-top:0}
@@ -50,7 +68,7 @@ nav{display:flex;gap:16px;margin:2px 0 6px}
   <label>Minutes<input id="min" type="number" value="30" style="width:80px"></label>
   <label class="chk"><input id="prac" type="checkbox">Practice (unranked)</label>
   <button class="go" id="create">Create</button></div></div>
- <div class="card hide" id="tags"><h2>Tags</h2><div id="taglist"></div></div>
+ <div class="card hide" id="tags"><h2>Tags</h2><div id="taglegend" aria-label="USACO Guide levels"></div><div id="taglist"></div></div>
  <div class="card hide" id="activecard"><h2>Your active races</h2><div class="wrap"><table id="active"></table></div></div>
  <div class="card"><h2>Join or watch a room</h2><div class="row" style="justify-content:flex-start">
   <label>Code<input id="jcode" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase;width:110px"></label>
@@ -58,6 +76,12 @@ nav{display:flex;gap:16px;margin:2px 0 6px}
  <div class="card hide" id="acctcard"><h2>Your Codeforces account</h2><div id="acctinfo" class="tag"></div><p><button id="chg"></button></p>
   <p class="tag">You can change your handle every week.</p></div>
 </section>
+
+<dialog id="tag-guide" aria-labelledby="tag-guide-title">
+  <h2 id="tag-guide-title"></h2>
+  <div id="tag-guide-content"></div>
+  <form method="dialog"><button type="submit" autofocus>Close</button></form>
+</dialog>
 
 <section id="lbpage" class="hide"><div class="card"><h2>Leaderboard</h2><div class="wrap"><table id="lb"></table></div></div></section>
 <section id="adminpage" class="hide"><div class="card"><h2>Admin</h2><div class="row"><label>Room <select id="adminRooms"></select></label><button id="adminReload">Refresh</button></div><label>Reason for change <input id="adminReason" placeholder="Required for every change" maxlength="500"></label><h3>Accounts</h3><div class="row"><select id="adminUsers"></select><input id="adminUserElo" type="number" min="0" max="100000"><button id="adminSetUserElo">Set account Elo</button></div><div class="row"><label>Clerk user ID <input id="adminProfileId" placeholder="user_..."></label><label>Handle <input id="adminProfileHandle"></label><label>CF rating <input id="adminProfileRating" type="number" min="0"></label><label>Games <input id="adminProfileGames" type="number" min="0"></label><label>Verified <input id="adminProfileVerified" type="checkbox"></label><label>Handle change timestamp (0 resets cooldown) <input id="adminProfileCooldown" type="number" min="0"></label><button id="adminSaveProfile">Save account</button><button id="adminNewProfile">New account profile</button></div><div id="adminDetail"></div></div></section>
@@ -82,7 +106,81 @@ const h=(t,x,a)=>Object.assign(document.createElement(t),x!=null?{textContent:x}
 const mmss=ms=>{const s=Math.floor(Math.max(0,ms)/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
 const show=(id,on)=>$(id).classList.toggle('hide',!on);
 const TAGS=['2-sat','binary search','bitmasks','brute force','chess','combinatorics','constructive algorithms','data structures','dfs and similar','divide and conquer','dp','dsu','expression parsing','fft','flows','games','geometry','graph matchings','graphs','greedy','hashing','implementation','interactive','math','matrices','meet-in-the-middle','number theory','probabilities','schedules','shortest paths','sortings','string suffix structures','strings','ternary search','trees','two pointers'];
-TAGS.forEach(t=>{const b=h('button',t,{type:'button'});b.onclick=()=>{$('tag').value=t;show('tags',false);$('info').setAttribute('aria-expanded','false')};$('taglist').append(b)});
+const GUIDE_LEVELS = {bronze:'Bronze', silver:'Silver', gold:'Gold', plat:'Platinum', adv:'Advanced', unmatched:'No match'};
+// Put the introductory match first. It sets the tag color, while each link shows its own level.
+const TAG_GUIDE = {
+  '2-sat': [['adv/SCC#2-sat', '2-SAT']],
+  'binary search': [['silver/binary-search-sorted-array', 'Binary Search on a Sorted Array'], ['silver/binary-search', 'Binary Search']],
+  bitmasks: [['silver/intro-bitwise', 'Intro to Bitwise Operators'], ['gold/dp-bitmasks', 'Bitmask DP'], ['plat/dp-sos', 'Sum over Subsets DP']],
+  'brute force': [['bronze/intro-complete', 'Basic Complete Search'], ['bronze/complete-rec', 'Complete Search with Recursion']],
+  combinatorics: [['gold/combo', 'Combinatorics'], ['plat/PIE', 'Inclusion-Exclusion Principle'], ['adv/catalan', 'Catalan Numbers']],
+  'data structures': [['bronze/intro-ds', 'Introduction to Data Structures'], ['bronze/intro-sets', 'Introduction to Sets & Maps'], ['silver/priority-queues', 'Priority Queues']],
+  'dfs and similar': [['silver/graph-traversal', 'Graph Traversal'], ['silver/flood-fill', 'Flood Fill']],
+  'divide and conquer': [['plat/DC-SRQ', 'Divide & Conquer - SRQ'], ['plat/DC-DP', 'Divide & Conquer - DP']],
+  dp: [['gold/intro-dp', 'Introduction to DP'], ['gold/knapsack', 'Knapsack DP'], ['gold/paths-grids', 'Paths on Grids'], ['gold/lis', 'Longest Increasing Subsequence'], ['gold/dp-bitmasks', 'Bitmask DP'], ['gold/dp-ranges', 'Range DP'], ['gold/digit-dp', 'Digit DP'], ['gold/dp-trees', 'DP on Trees - Introduction']],
+  dsu: [['gold/dsu', 'Disjoint Set Union']],
+  fft: [['adv/fft', 'Introduction to Fast Fourier Transform'], ['adv/fft-ext', 'More Complex Operations Using FFT']],
+  flows: [['adv/max-flow', 'Maximum Flow'], ['adv/min-cost-flow', 'Minimum Cost Flow'], ['adv/min-cut', 'Minimum Cut'], ['adv/flow-lb', 'Flow with Lower Bounds']],
+  games: [['adv/game-theory', 'Game Theory']],
+  geometry: [['bronze/rect-geo', 'Rectangle Geometry'], ['plat/geo-pri', 'Geometry Primitives'], ['plat/sweep-line', 'Sweep Line'], ['plat/convex-hull', 'Convex Hull']],
+  'graph matchings': [['adv/max-flow#bipartite-matching', 'Bipartite Matching']],
+  graphs: [['bronze/intro-graphs', 'Introduction to Graphs'], ['silver/graph-traversal', 'Graph Traversal'], ['silver/func-graphs', 'Introduction to Functional Graphs']],
+  greedy: [['bronze/intro-greedy', 'Introduction to Greedy Algorithms'], ['silver/greedy-sorting', 'Greedy Algorithms with Sorting']],
+  hashing: [['gold/hashing', 'Hashing']],
+  implementation: [['bronze/simulation', 'Simulation']],
+  interactive: [['adv/interactive', 'Interactive and Communication Problems']],
+  math: [['gold/divisibility', 'Divisibility'], ['gold/modular', 'Modular Arithmetic'], ['gold/combo', 'Combinatorics']],
+  matrices: [['plat/matrix-expo', 'Matrix Exponentiation']],
+  'meet-in-the-middle': [['gold/meet-in-the-middle', 'Meet In The Middle']],
+  'number theory': [['gold/divisibility', 'Divisibility'], ['gold/modular', 'Modular Arithmetic'], ['adv/extend-euclid', 'Extended Euclidean Algorithm']],
+  schedules: [['silver/greedy-sorting#example---the-scheduling-problem', 'The Scheduling Problem']],
+  'shortest paths': [['gold/unweighted-shortest-paths', 'Shortest Paths with Unweighted Edges'], ['gold/shortest-paths', 'Shortest Paths with Non-Negative Edge Weights'], ['adv/sp-neg', 'Shortest Paths with Negative Edge Weights']],
+  sortings: [['bronze/intro-sorting', 'Introduction to Sorting'], ['silver/sorting-custom', 'Custom Comparators and Coordinate Compression']],
+  'string suffix structures': [['adv/string-suffix', 'String Suffix Structures'], ['adv/suffix-array', 'Suffix Array']],
+  strings: [['adv/string-search', 'String Searching'], ['adv/string-suffix', 'String Suffix Structures'], ['adv/suffix-array', 'Suffix Array']],
+  'ternary search': [['gold/ternary-search', 'Optimizing Unimodal Functions']],
+  trees: [['silver/intro-tree', 'Introduction to Tree Algorithms'], ['gold/dp-trees', 'DP on Trees - Introduction'], ['plat/binary-jump', 'Binary Jumping']],
+  'two pointers': [['silver/two-pointers', 'Two Pointers'], ['gold/sliding-window', 'Sliding Window']],
+};
+const guideLevel = path => path.split('/')[0];
+function openTagGuide(tag, articles) {
+  $('tag-guide-title').textContent = 'USACO Guide · ' + tag;
+  const content = $('tag-guide-content');
+  if (!articles.length) {
+    content.replaceChildren(h('p', 'No matching USACO Guide article.'));
+  } else {
+    const list = h('ul');
+    for (const [path, title] of articles) {
+      const item = h('li');
+      item.append(h('a', title, {href:'https://usaco.guide/' + path, target:'_blank', rel:'noopener'}),
+        ' · ' + GUIDE_LEVELS[guideLevel(path)]);
+      list.append(item);
+    }
+    content.replaceChildren(list);
+  }
+  $('tag-guide').showModal();
+}
+for (const [level, label] of Object.entries(GUIDE_LEVELS)) {
+  $('taglegend').append(h('span', label, {className:'tag-' + level}));
+}
+for (const tag of TAGS) {
+  const articles = TAG_GUIDE[tag] || [];
+  const level = articles.length ? guideLevel(articles[0][0]) : 'unmatched';
+  const topic = h('span', null, {className:'tag-topic'});
+  const pick = h('button', tag, {type:'button', className:'tag-pick tag-' + level, title:GUIDE_LEVELS[level]});
+  pick.onclick = () => {
+    $('tag').value = tag;
+    $('tag').focus();
+    show('tags', false);
+    $('info').setAttribute('aria-expanded', 'false');
+  };
+  const info = h('button', 'i', {type:'button', className:'tag-info'});
+  info.setAttribute('aria-label', 'USACO Guide for ' + tag);
+  info.setAttribute('aria-haspopup', 'dialog');
+  info.onclick = () => openTagGuide(tag, articles);
+  topic.append(pick, info);
+  $('taglist').append(topic);
+}
 $('info').onclick=()=>{const o=$('tags').classList.contains('hide');show('tags',o);$('info').setAttribute('aria-expanded',String(o))};
 
 let S=null,offset=0,me=null,es=null,ticker=null,spectating=false,meInfo=null,ac=null,seen=null,muted=localStorage.getItem('cfr-mute')==='1';
