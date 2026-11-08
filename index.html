@@ -105,7 +105,7 @@ const say=t=>$('msg').textContent=t||'';
 const h=(t,x,a)=>Object.assign(document.createElement(t),x!=null?{textContent:x}:{},a||{});
 const mmss=ms=>{const s=Math.floor(Math.max(0,ms)/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
 const show=(id,on)=>$(id).classList.toggle('hide',!on);
-const TAGS=['2-sat','binary search','bitmasks','brute force','chess','combinatorics','constructive algorithms','data structures','dfs and similar','divide and conquer','dp','dsu','expression parsing','fft','flows','games','geometry','graph matchings','graphs','greedy','hashing','implementation','interactive','math','matrices','meet-in-the-middle','number theory','probabilities','schedules','shortest paths','sortings','string suffix structures','strings','ternary search','trees','two pointers'];
+const TAGS=['*special','2-sat','binary search','bitmasks','brute force','chinese remainder theorem','combinatorics','communication','constructive algorithms','data structures','dfs and similar','divide and conquer','dp','dsu','expression parsing','fft','flows','games','geometry','graph matchings','graphs','greedy','hashing','implementation','interactive','math','matrices','meet-in-the-middle','number theory','probabilities','schedules','shortest paths','sortings','string suffix structures','strings','ternary search','trees','two pointers'];
 const GUIDE_LEVELS = {bronze:'Bronze', silver:'Silver', gold:'Gold', plat:'Platinum', adv:'Advanced', unmatched:'No match'};
 // Put the introductory match first. It sets the tag color, while each link shows its own level.
 const TAG_GUIDE = {
@@ -113,7 +113,9 @@ const TAG_GUIDE = {
   'binary search': [['silver/binary-search-sorted-array', 'Binary Search on a Sorted Array'], ['silver/binary-search', 'Binary Search']],
   bitmasks: [['silver/intro-bitwise', 'Intro to Bitwise Operators'], ['gold/dp-bitmasks', 'Bitmask DP'], ['plat/dp-sos', 'Sum over Subsets DP']],
   'brute force': [['bronze/intro-complete', 'Basic Complete Search'], ['bronze/complete-rec', 'Complete Search with Recursion']],
+  'chinese remainder theorem': [['adv/extend-euclid#application---chinese-remainder-theorem', 'Chinese Remainder Theorem']],
   combinatorics: [['gold/combo', 'Combinatorics'], ['plat/PIE', 'Inclusion-Exclusion Principle'], ['adv/catalan', 'Catalan Numbers']],
+  communication: [['adv/interactive', 'Interactive and Communication Problems']],
   'data structures': [['bronze/intro-ds', 'Introduction to Data Structures'], ['bronze/intro-sets', 'Introduction to Sets & Maps'], ['silver/priority-queues', 'Priority Queues']],
   'dfs and similar': [['silver/graph-traversal', 'Graph Traversal'], ['silver/flood-fill', 'Flood Fill']],
   'divide and conquer': [['plat/DC-SRQ', 'Divide & Conquer - SRQ'], ['plat/DC-DP', 'Divide & Conquer - DP']],
