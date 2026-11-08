@@ -106,45 +106,153 @@ const h=(t,x,a)=>Object.assign(document.createElement(t),x!=null?{textContent:x}
 const mmss=ms=>{const s=Math.floor(Math.max(0,ms)/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
 const show=(id,on)=>$(id).classList.toggle('hide',!on);
 const TAGS=['*special','2-sat','binary search','bitmasks','brute force','chinese remainder theorem','combinatorics','communication','constructive algorithms','data structures','dfs and similar','divide and conquer','dp','dsu','expression parsing','fft','flows','games','geometry','graph matchings','graphs','greedy','hashing','implementation','interactive','math','matrices','meet-in-the-middle','number theory','probabilities','schedules','shortest paths','sortings','string suffix structures','strings','ternary search','trees','two pointers'];
-const GUIDE_LEVELS = {bronze:'Bronze', silver:'Silver', gold:'Gold', plat:'Platinum', adv:'Advanced', unmatched:'No match'};
-// Put the introductory match first. It sets the tag color, while each link shows its own level.
+const GUIDE_LEVELS = {bronze:'Bronze', silver:'Silver', gold:'Gold', plat:'Platinum', adv:'Advanced', unmatched:'No direct match'};
+// The first article is the introductory direct match and sets the tag color.
+// Related articles follow it and never affect the color.
 const TAG_GUIDE = {
   '2-sat': [['adv/SCC#2-sat', '2-SAT']],
   'binary search': [['silver/binary-search-sorted-array', 'Binary Search on a Sorted Array'], ['silver/binary-search', 'Binary Search']],
-  bitmasks: [['silver/intro-bitwise', 'Intro to Bitwise Operators'], ['gold/dp-bitmasks', 'Bitmask DP'], ['plat/dp-sos', 'Sum over Subsets DP']],
+  bitmasks: [
+    ['silver/intro-bitwise', 'Intro to Bitwise Operators'],
+    ['gold/dp-bitmasks', 'Bitmask DP'],
+    ['plat/dp-sos', 'Sum over Subsets DP'],
+    ["plat/bitsets", "Bitsets"],
+    ["adv/xor-basis", "XOR Basis"],
+  ],
   'brute force': [['bronze/intro-complete', 'Basic Complete Search'], ['bronze/complete-rec', 'Complete Search with Recursion']],
   'chinese remainder theorem': [['adv/extend-euclid#application---chinese-remainder-theorem', 'Chinese Remainder Theorem']],
   combinatorics: [['gold/combo', 'Combinatorics'], ['plat/PIE', 'Inclusion-Exclusion Principle'], ['adv/catalan', 'Catalan Numbers']],
   communication: [['adv/interactive', 'Interactive and Communication Problems']],
-  'data structures': [['bronze/intro-ds', 'Introduction to Data Structures'], ['bronze/intro-sets', 'Introduction to Sets & Maps'], ['silver/priority-queues', 'Priority Queues']],
-  'dfs and similar': [['silver/graph-traversal', 'Graph Traversal'], ['silver/flood-fill', 'Flood Fill']],
+  'data structures': [
+    ['bronze/intro-ds', 'Introduction to Data Structures'],
+    ['bronze/intro-sets', 'Introduction to Sets & Maps'],
+    ['silver/priority-queues', 'Priority Queues'],
+    ["silver/prefix-sums", "Introduction to Prefix Sums"],
+    ["silver/more-prefix-sums", "More on Prefix Sums"],
+    ["gold/intro-sorted-sets", "More Operations on Sorted Sets"],
+    ["gold/custom-cpp-stl", "Sorted Sets with Custom Comparators"],
+    ["gold/stacks", "Stacks"],
+    ["gold/hashmaps", "Hashmaps"],
+    ["gold/PURS", "Point Update Range Sum"],
+    ["plat/segtree-ext", "More Applications of Segment Tree"],
+    ["plat/range-sweep", "Range Queries with Sweep Line"],
+    ["plat/RURQ", "Range Update Range Query"],
+    ["plat/sparse-segtree", "Sparse Segment Trees"],
+    ["plat/2DRQ", "2D Range Queries"],
+    ["plat/sqrt", "Square Root Decomposition"],
+    ["adv/count-min", "Counting Minimums with Segment Tree"],
+    ["adv/offline-del", "Offline Deletion"],
+    ["adv/persistent", "Persistent Data Structures"],
+    ["adv/segtree-beats", "Segment Tree Beats"],
+    ["adv/springboards", "Max Suffix Query with Insertions Only"],
+    ["adv/treaps", "Treaps"],
+    ["adv/wavelet", "Wavelet Tree"],
+  ],
+  'dfs and similar': [
+    ['silver/graph-traversal', 'Graph Traversal'],
+    ['silver/flood-fill', 'Flood Fill'],
+    ["adv/SCC", "Strongly Connected Components"],
+    ["adv/BCC-2CC", "BCCs and 2CCs"],
+  ],
   'divide and conquer': [['plat/DC-SRQ', 'Divide & Conquer - SRQ'], ['plat/DC-DP', 'Divide & Conquer - DP']],
-  dp: [['gold/intro-dp', 'Introduction to DP'], ['gold/knapsack', 'Knapsack DP'], ['gold/paths-grids', 'Paths on Grids'], ['gold/lis', 'Longest Increasing Subsequence'], ['gold/dp-bitmasks', 'Bitmask DP'], ['gold/dp-ranges', 'Range DP'], ['gold/digit-dp', 'Digit DP'], ['gold/dp-trees', 'DP on Trees - Introduction']],
-  dsu: [['gold/dsu', 'Disjoint Set Union']],
+  dp: [
+    ['gold/intro-dp', 'Introduction to DP'],
+    ['gold/knapsack', 'Knapsack DP'],
+    ['gold/paths-grids', 'Paths on Grids'],
+    ['gold/lis', 'Longest Increasing Subsequence'],
+    ['gold/dp-bitmasks', 'Bitmask DP'],
+    ['gold/dp-ranges', 'Range DP'],
+    ['gold/digit-dp', 'Digit DP'],
+    ['gold/dp-trees', 'DP on Trees - Introduction'],
+    ["gold/all-roots", "DP on Trees - Solving For All Roots"],
+    ["plat/dp-sos", "Sum over Subsets DP"],
+    ["plat/convex-hull-trick", "Convex Hull Trick"],
+    ["plat/DC-DP", "Divide & Conquer - DP"],
+    ["adv/comb-sub", "DP on Trees - Combining Subtrees"],
+    ["adv/dp-broken-profile", "DP on Broken Profile"],
+    ["adv/dp-more", "Additional DP Optimizations and Techniques"],
+    ["adv/lagrange", "Lagrangian Relaxation"],
+    ["adv/slope-trick", "Slope Trick"],
+  ],
+  dsu: [
+    ['gold/dsu', 'Disjoint Set Union'],
+    ["gold/mst", "Minimum Spanning Trees"],
+    ["adv/offline-del", "Offline Deletion"],
+    ["plat/kruskal-tree", "Kruskal Reconstruction Tree"],
+  ],
   fft: [['adv/fft', 'Introduction to Fast Fourier Transform'], ['adv/fft-ext', 'More Complex Operations Using FFT']],
   flows: [['adv/max-flow', 'Maximum Flow'], ['adv/min-cost-flow', 'Minimum Cost Flow'], ['adv/min-cut', 'Minimum Cut'], ['adv/flow-lb', 'Flow with Lower Bounds']],
   games: [['adv/game-theory', 'Game Theory']],
-  geometry: [['bronze/rect-geo', 'Rectangle Geometry'], ['plat/geo-pri', 'Geometry Primitives'], ['plat/sweep-line', 'Sweep Line'], ['plat/convex-hull', 'Convex Hull']],
-  'graph matchings': [['adv/max-flow#bipartite-matching', 'Bipartite Matching']],
-  graphs: [['bronze/intro-graphs', 'Introduction to Graphs'], ['silver/graph-traversal', 'Graph Traversal'], ['silver/func-graphs', 'Introduction to Functional Graphs']],
-  greedy: [['bronze/intro-greedy', 'Introduction to Greedy Algorithms'], ['silver/greedy-sorting', 'Greedy Algorithms with Sorting']],
-  hashing: [['gold/hashing', 'Hashing']],
-  implementation: [['bronze/simulation', 'Simulation']],
+  geometry: [
+    ['bronze/rect-geo', 'Rectangle Geometry'],
+    ['plat/geo-pri', 'Geometry Primitives'],
+    ['plat/sweep-line', 'Sweep Line'],
+    ['plat/convex-hull', 'Convex Hull'],
+    ["adv/eulers-formula", "Euler's Formula"],
+  ],
+  'graph matchings': [
+    ['adv/max-flow#bipartite-matching', 'Bipartite Matching'],
+    ["adv/matroid-isect", "Matroid Intersection"],
+  ],
+  graphs: [
+    ['bronze/intro-graphs', 'Introduction to Graphs'],
+    ['silver/graph-traversal', 'Graph Traversal'],
+    ['silver/func-graphs', 'Introduction to Functional Graphs'],
+    ["gold/toposort", "Topological Sort"],
+    ["gold/mst", "Minimum Spanning Trees"],
+    ["adv/SCC", "Strongly Connected Components"],
+    ["adv/BCC-2CC", "BCCs and 2CCs"],
+    ["adv/eulerian-tours", "Eulerian Tours"],
+    ["adv/critical", "Critical"],
+    ["adv/eulers-formula", "Euler's Formula"],
+  ],
+  greedy: [
+    ['bronze/intro-greedy', 'Introduction to Greedy Algorithms'],
+    ['silver/greedy-sorting', 'Greedy Algorithms with Sorting'],
+    ["adv/matroid", "Matroids"],
+  ],
+  hashing: [['gold/hashing', 'Hashing'], ['gold/hashmaps', 'Hashmaps']],
+  implementation: [
+    ['bronze/simulation', 'Simulation'],
+    ["bronze/casework", "Casework"],
+    ["bronze/ad-hoc", "Ad Hoc Problems"],
+  ],
   interactive: [['adv/interactive', 'Interactive and Communication Problems']],
   math: [['gold/divisibility', 'Divisibility'], ['gold/modular', 'Modular Arithmetic'], ['gold/combo', 'Combinatorics']],
   matrices: [['plat/matrix-expo', 'Matrix Exponentiation']],
   'meet-in-the-middle': [['gold/meet-in-the-middle', 'Meet In The Middle']],
-  'number theory': [['gold/divisibility', 'Divisibility'], ['gold/modular', 'Modular Arithmetic'], ['adv/extend-euclid', 'Extended Euclidean Algorithm']],
+  'number theory': [
+    ['gold/divisibility', 'Divisibility'],
+    ['gold/modular', 'Modular Arithmetic'],
+    ['adv/extend-euclid', 'Extended Euclidean Algorithm'],
+    ["adv/prefix-sums-nt-1", "Prefix Sums of Number-Theoretic Functions (Part 1)"],
+    ["adv/prefix-sums-nt-2", "Prefix Sums of Number-Theoretic Functions (Part 2)"],
+  ],
   schedules: [['silver/greedy-sorting#example---the-scheduling-problem', 'The Scheduling Problem']],
   'shortest paths': [['gold/unweighted-shortest-paths', 'Shortest Paths with Unweighted Edges'], ['gold/shortest-paths', 'Shortest Paths with Non-Negative Edge Weights'], ['adv/sp-neg', 'Shortest Paths with Negative Edge Weights']],
   sortings: [['bronze/intro-sorting', 'Introduction to Sorting'], ['silver/sorting-custom', 'Custom Comparators and Coordinate Compression']],
   'string suffix structures': [['adv/string-suffix', 'String Suffix Structures'], ['adv/suffix-array', 'Suffix Array']],
   strings: [['adv/string-search', 'String Searching'], ['adv/string-suffix', 'String Suffix Structures'], ['adv/suffix-array', 'Suffix Array']],
   'ternary search': [['gold/ternary-search', 'Optimizing Unimodal Functions']],
-  trees: [['silver/intro-tree', 'Introduction to Tree Algorithms'], ['gold/dp-trees', 'DP on Trees - Introduction'], ['plat/binary-jump', 'Binary Jumping']],
+  trees: [
+    ['silver/intro-tree', 'Introduction to Tree Algorithms'],
+    ['gold/dp-trees', 'DP on Trees - Introduction'],
+    ['plat/binary-jump', 'Binary Jumping'],
+    ["gold/tree-euler", "Euler Tour Technique"],
+    ["gold/lca-euler", "LCA with Euler Tour"],
+    ["gold/all-roots", "DP on Trees - Solving For All Roots"],
+    ["plat/centroid", "Centroid Decomposition"],
+    ["plat/hld", "Heavy-Light Decomposition"],
+    ["plat/merging", "Small-To-Large Merging"],
+    ["plat/VT", "Virtual Tree"],
+    ["plat/kruskal-tree", "Kruskal Reconstruction Tree"],
+    ["adv/comb-sub", "DP on Trees - Combining Subtrees"],
+    ["adv/link-cut-tree", "Link Cut Tree"],
+  ],
   'two pointers': [['silver/two-pointers', 'Two Pointers'], ['gold/sliding-window', 'Sliding Window']],
 };
 const guideLevel = path => path.split('/')[0];
+const guideOrder = Object.keys(GUIDE_LEVELS);
 function openTagGuide(tag, articles) {
   $('tag-guide-title').textContent = 'USACO Guide · ' + tag;
   const content = $('tag-guide-content');
@@ -152,7 +260,8 @@ function openTagGuide(tag, articles) {
     content.replaceChildren(h('p', 'No matching USACO Guide article.'));
   } else {
     const list = h('ul');
-    for (const [path, title] of articles) {
+    const ordered = [...articles].sort(([a], [b]) => guideOrder.indexOf(guideLevel(a)) - guideOrder.indexOf(guideLevel(b)));
+    for (const [path, title] of ordered) {
       const item = h('li');
       item.append(h('a', title, {href:'https://usaco.guide/' + path, target:'_blank', rel:'noopener'}),
         ' · ' + GUIDE_LEVELS[guideLevel(path)]);
