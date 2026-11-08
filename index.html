@@ -43,6 +43,15 @@ a{color:var(--acc)}.hide{display:none}.msg{color:var(--acc);min-height:1.4em}
 #tag-guide::backdrop{background:#0007}
 #tag-guide ul{padding-left:22px}
 #tag-guide li+li{margin-top:6px}
+.admin-picker{display:grid;gap:12px;margin-bottom:16px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.admin-picker h3{margin:0;font-size:16px}
+.admin-picker input,.admin-picker select,.admin-picker button{background:var(--card)}
+.admin-room-tabs{display:flex;flex-wrap:wrap;gap:6px}
+.admin-room-tabs button[aria-pressed="true"]{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.admin-room-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px}
+.admin-room-fields select{min-width:0;width:100%;text-overflow:ellipsis}
+.admin-room-status{margin:0}
+#adminDetail:not(:empty){margin-top:16px}
 textarea{width:100%;min-height:130px;font:13px/1.4 ui-monospace,monospace;margin:6px 0}
 pre{margin:0;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:7px;max-height:240px;overflow:auto;white-space:pre;font:13px/1.4 ui-monospace,monospace}
 td.code-cell{white-space:normal;padding-top:0}
@@ -84,7 +93,18 @@ nav{display:flex;gap:16px;margin:2px 0 6px}
 </dialog>
 
 <section id="lbpage" class="hide"><div class="card"><h2>Leaderboard</h2><div class="wrap"><table id="lb"></table></div></div></section>
-<section id="adminpage" class="hide"><div class="card"><h2>Admin</h2><div class="row"><label>Room <select id="adminRooms"></select></label><button id="adminReload">Refresh</button></div><label>Reason for change <input id="adminReason" placeholder="Required for every change" maxlength="500"></label><h3>Accounts</h3><div class="row"><select id="adminUsers"></select><input id="adminUserElo" type="number" min="0" max="100000"><button id="adminSetUserElo">Set account Elo</button></div><div class="row"><label>Clerk user ID <input id="adminProfileId" placeholder="user_..."></label><label>Handle <input id="adminProfileHandle"></label><label>CF rating <input id="adminProfileRating" type="number" min="0"></label><label>Games <input id="adminProfileGames" type="number" min="0"></label><label>Verified <input id="adminProfileVerified" type="checkbox"></label><label>Handle change timestamp (0 resets cooldown) <input id="adminProfileCooldown" type="number" min="0"></label><button id="adminSaveProfile">Save account</button><button id="adminNewProfile">New account profile</button></div><div id="adminDetail"></div></div></section>
+<section id="adminpage" class="hide"><div class="card"><h2>Admin</h2><div class="admin-picker" aria-labelledby="adminRoomHeading">
+  <div class="row"><h3 id="adminRoomHeading">Rooms</h3><button type="button" id="adminReload">Refresh</button></div>
+  <div class="admin-room-tabs" role="group" aria-label="Room category">
+    <button type="button" id="adminActive" aria-pressed="true">Active</button>
+    <button type="button" id="adminArchived" aria-pressed="false">Archived</button>
+  </div>
+  <div class="admin-room-fields">
+    <label>Find a room<input type="search" id="adminRoomSearch" placeholder="Room code or player"></label>
+    <label>Room<select id="adminRooms" disabled><option value="">Choose a room</option></select></label>
+  </div>
+  <p id="adminRoomStatus" class="tag admin-room-status" role="status"></p>
+</div><label>Reason for change <input id="adminReason" placeholder="Required for every change" maxlength="500"></label><h3>Accounts</h3><div class="row"><select id="adminUsers"></select><input id="adminUserElo" type="number" min="0" max="100000"><button id="adminSetUserElo">Set account Elo</button></div><div class="row"><label>Clerk user ID <input id="adminProfileId" placeholder="user_..."></label><label>Handle <input id="adminProfileHandle"></label><label>CF rating <input id="adminProfileRating" type="number" min="0"></label><label>Games <input id="adminProfileGames" type="number" min="0"></label><label>Verified <input id="adminProfileVerified" type="checkbox"></label><label>Handle change timestamp (0 resets cooldown) <input id="adminProfileCooldown" type="number" min="0"></label><button id="adminSaveProfile">Save account</button><button id="adminNewProfile">New account profile</button></div><div id="adminDetail"></div></div></section>
 <section id="archivepage" class="hide"><div class="card"><h2>Finished rooms</h2><div class="wrap"><table id="archive"></table></div><button id="archiveMore" class="hide">Load more</button></div></section>
 <section id="histpage" class="hide"><div class="card"><h2>Duel history</h2><div id="rec" class="tag"></div><div class="wrap"><table id="hist"></table></div></div></section>
 
@@ -438,11 +458,49 @@ async function loadHist(){
       return[new Date(g.at).toLocaleString(),g.code,g.ranked?'Ranked':'Practice',h('td',g.forfeit?'Forfeit':'#'+g.rank+' of '+g.of,{className:g.forfeit?'warn':g.rank===1&&g.of>1?'ok':''}),g.pts,d==null?'-':(d>=0?'+':'')+d,g.opp.join(', ')||'-']}),'No races yet.')}catch(e){say(e.message)}
 }
 
-let adminRoom=null;
+let adminRoom=null, adminRooms=[], adminRoomCategory='active', adminRoomRequest=0;
+const roomCategory = r => r.finalized || r.deleted ? 'archived' : 'active';
+
+function renderAdminRooms(selected=''){
+  const select=$('adminRooms'), query=$('adminRoomSearch').value.trim().toLowerCase();
+  const activeCount=adminRooms.filter(r=>roomCategory(r)==='active').length;
+  $('adminActive').textContent='Active ('+activeCount+')';
+  $('adminArchived').textContent='Archived ('+(adminRooms.length-activeCount)+')';
+  $('adminActive').setAttribute('aria-pressed',String(adminRoomCategory==='active'));
+  $('adminArchived').setAttribute('aria-pressed',String(adminRoomCategory==='archived'));
+
+  const category=adminRooms.filter(r=>roomCategory(r)===adminRoomCategory);
+  const visible=category.filter(r=>[r.code,...r.players].some(value=>value.toLowerCase().includes(query)));
+  if(adminRoomCategory==='archived')visible.sort((a,b)=>(b.endAt||0)-(a.endAt||0));
+  select.replaceChildren(h('option','Choose a room',{value:''}));
+  for(const room of visible){
+    const label=[room.code,room.players.join(', ')||'No players'];
+    if(room.deleted)label.push('Deleted');
+    else if(room.finalized)label.push(new Date(room.endAt).toLocaleDateString());
+    select.append(h('option',label.join(' · '),{value:room.code}));
+  }
+  select.disabled=!visible.length;
+  if(visible.some(r=>r.code===selected))select.value=selected;
+  $('adminRoomStatus').textContent=!category.length?'No '+adminRoomCategory+' rooms.':
+    query?visible.length+' of '+category.length+' rooms match.':category.length+' '+adminRoomCategory+' '+(category.length===1?'room':'rooms')+'.';
+  if(!select.value){
+    adminRoomRequest++;
+    adminRoom=null;
+    $('adminDetail').replaceChildren();
+  }
+}
+
+function showAdminRoomCategory(category){
+  if(adminRoomCategory===category)return;
+  adminRoomCategory=category;
+  $('adminRoomSearch').value='';
+  renderAdminRooms();
+}
 async function adminAction(action,fields={}){
   const reason=$('adminReason').value.trim();if(!reason){say('Enter a reason first.');return}
-  if(!confirm('Apply '+action+' to room '+adminRoom.code+'?'))return;
-  try{await api('POST','/api/admin/action',{code:adminRoom.code,action,reason,...fields});say('Saved.');await loadAdmin(adminRoom.code)}catch(e){say(e.message)}
+  const code=adminRoom.code;
+  if(!confirm('Apply '+action+' to room '+code+'?'))return;
+  try{await api('POST','/api/admin/action',{code,action,reason,...fields});say('Saved.');await loadAdmin($('adminRooms').value)}catch(e){say(e.message)}
 }
 function adminButton(label,action,fields){const b=h('button',label);b.onclick=()=>adminAction(action,typeof fields==='function'?fields():fields);return b}
 function adminInput(value,type='text'){return h('input',null,{value:value??'',type})}
@@ -480,17 +538,27 @@ async function loadAdmin(selected=$('adminRooms').value){
     const selectedUser=$('adminUsers').value,accounts=await api('GET','/api/admin/users');adminUsers=accounts.users;
     $('adminUsers').replaceChildren();adminUsers.forEach(u=>$('adminUsers').append(h('option',u.handle+' · '+u.elo,{value:u.handle})));
     if(adminUsers.some(u=>u.handle===selectedUser))$('adminUsers').value=selectedUser;pickAdminUser();
-    const {rooms}=await api('GET','/api/admin/rooms'),select=$('adminRooms');select.replaceChildren();
-    rooms.forEach(r=>select.append(h('option',r.code+' · '+r.players.join(', ')+(r.deleted?' · deleted':r.finalized?' · finished':' · active'),{value:r.code})));
-    if(rooms.some(r=>r.code===selected))select.value=selected;
-    if(!rooms.length){$('adminDetail').textContent='No rooms.';return}
-    await loadAdminRoom();
+    const {rooms}=await api('GET','/api/admin/rooms');
+    adminRooms=rooms.reverse();
+    const room=adminRooms.find(r=>r.code===selected);
+    if(room&&roomCategory(room)!==adminRoomCategory){
+      adminRoomCategory=roomCategory(room);
+      $('adminRoomSearch').value='';
+    }
+    renderAdminRooms(selected);
+    if($('adminRooms').value)await loadAdminRoom();
   }catch(e){say(e.message)}
 }
 async function loadAdminRoom(){
+  const code=$('adminRooms').value, request=++adminRoomRequest, box=$('adminDetail');
+  adminRoom=null;
+  box.textContent=code?'Loading room…':'';
+  if(!code)return;
   try{
-    adminRoom=await api('GET','/api/admin/room?code='+encodeURIComponent($('adminRooms').value));
-    const r=adminRoom,box=$('adminDetail');box.replaceChildren();
+    const r=await api('GET','/api/admin/room?code='+encodeURIComponent(code));
+    if(request!==adminRoomRequest)return;
+    adminRoom=r;
+    box.replaceChildren(h('h3','Room '+r.code));
     const operations=h('div',null,{className:'row'});
     operations.append(adminButton(r.deleted?'Restore room':'Delete room',r.deleted?'restore':'delete'));
     if(r.startAt&&!r.finalized)operations.append(adminButton('End race and paste window now','finish'));
@@ -527,9 +595,18 @@ async function loadAdminRoom(){
     }
     box.append(h('h3','Review log'));
     (r.audit||[]).slice().reverse().forEach(a=>box.append(h('p',new Date(a.at).toLocaleString()+' · '+a.action+' · '+(a.handle||'')+' · '+a.reason)));
-  }catch(e){say(e.message)}
+  }catch(e){
+    if(request===adminRoomRequest){
+      box.replaceChildren();
+      say(e.message);
+    }
+  }
 }
-$('adminRooms').onchange=loadAdminRoom;$('adminReload').onclick=()=>loadAdmin();
+$('adminRooms').onchange=loadAdminRoom;
+$('adminReload').onclick=()=>loadAdmin();
+$('adminActive').onclick=()=>showAdminRoomCategory('active');
+$('adminArchived').onclick=()=>showAdminRoomCategory('archived');
+$('adminRoomSearch').oninput=()=>renderAdminRooms($('adminRooms').value);
 let archiveNext=null,archiveRows=[];
 async function loadArchive(more=false){
   try{
